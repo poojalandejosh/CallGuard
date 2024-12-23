@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {View,Text,TouchableOpacity,FlatList,Alert,SafeAreaView,StatusBar,ListRenderItem,Modal,ScrollView,TextInput,Image,NativeModules,PermissionsAndroid,Platform,ToastAndroid} from 'react-native';
 import {BLOCKED_NUMBERS, STAR_PROTECTION, STOP_PROTECTION} from './constant';
 import {styles} from './styles';
+import axios from 'axios';
 
 import {
   BlockedNumber,
@@ -26,7 +27,7 @@ const BlockedNumberCard: React.FC<BlockedNumberCardProps> = ({
           <TouchableOpacity
             style={styles.helpButton}
             onPress={() => setModalVisible(true)}>
-            <Text style={styles.helpButtonText}>Get Verified</Text>
+            <Text style={styles.helpButtonText}> ✅ Get Verified</Text>
           </TouchableOpacity>
 
         </View>
@@ -121,10 +122,8 @@ const Home: React.FC = () => {
 
   const {CallRecording} = NativeModules;
   const [audioAccessGranted, setAudioAccessGranted] = useState(false);
-  console.log('audioAccessGranted..', audioAccessGranted);
 
   useEffect(() => {
-    console.log('call');
     requestPermission();
   }, []);
 
@@ -150,7 +149,6 @@ const Home: React.FC = () => {
 
       setAudioAccessGranted(allPermissionsGranted);
     } catch (err) {
-      console.error('Failed to request permissions:', err);
       setAudioAccessGranted(false);
     }
   };
@@ -166,7 +164,6 @@ const Home: React.FC = () => {
 
 
   function startCallRecording() {
-    console.log('startchek************...',serviceRunning)
     if(serviceRunning === false){
       const documentsDir = RNFS.DocumentDirectoryPath; // Internal storage
 
@@ -174,7 +171,6 @@ const Home: React.FC = () => {
       if (Platform.OS === 'android') {
         filePath = `${documentsDir}/callRecording.mp4`;
       }
-      console.log('start........ filePath...', filePath);
       CallRecording.startRecording(
         filePath,
         (successMessage: any) => {
@@ -188,13 +184,68 @@ const Home: React.FC = () => {
     setServiceRunning(true);
   }
 
+  const checkAudioFile = async() =>{
+    const documentsDir = RNFS.DocumentDirectoryPath; // Internal storage
+      let filePath = `${documentsDir}/callRecording.mp4`;
+      
+      const formData = new FormData();
+      formData.append('file', {
+        uri: filePath,
+        type: 'audio/mp4', // Change if the recorded format is different
+        name: 'callRecording.mp4',
+      });      
+  
+        try {
+          const response = await axios.post('https://75f0-202-149-221-42.ngrok-free.app/upload-audio', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          Alert.alert('Upload Successful', `Server Response: ${JSON.stringify(response.data)}`);
+        } catch (error) {
+          console.log('Error uploading file:', error);
+          //Alert.alert('Error', 'Failed to upload the audio file.');
+        }
+      // try {
+      //   const response = await fetch('https://75f0-202-149-221-42.ngrok-free.app/upload-audio', {
+      //     method: 'POST',
+      //     body: formData,
+      //   });
+  
+      //   const result = await response.json();
+      //   if (response.ok) {
+      //     Alert.alert('Upload Successful', `Server Response: ${JSON.stringify(result)}`);
+      //   } else {
+      //     Alert.alert('Upload Failed', `Error: ${result.message}`);
+      //   }
+      // } catch (error) {
+      //   console.error('Error uploading file:', error);
+      //   Alert.alert('Error', 'Failed to upload the audio file.');
+      // }
+
+      try {
+        const response = await fetch('https://75f0-202-149-221-42.ngrok-free.app/', {
+          method: 'GET',
+        });
+  
+        const result = await response.json();
+
+        if (response.ok) {
+          Alert.alert('READING Successful', `Server Response: ${JSON.stringify(result)}`);
+        } else {
+          Alert.alert('READING Failed', `Error: ${result.message}`);
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Failed to upload the audio file.');
+      }
+    };  
+
   const getRecording = async () => {
     const documentsDir = RNFS.DocumentDirectoryPath; // Path to your file
     let filePath = `${documentsDir}/callRecording.mp4`;
 
     // Check if the file exists
     const fileExists = await RNFS.exists(filePath);
-    console.log('File exists:', fileExists);
 
     if (fileExists) {
       // Read the file (use RNFS.readFile for text, or use RNFS.readFileAssets for binary data)
@@ -213,19 +264,18 @@ const Home: React.FC = () => {
 
   // Stop Recording
   function stopCallRecording() {
-    console.log('start..^^^^^^^^^^.',serviceRunning)
-
     if(serviceRunning){
       CallRecording.stopRecording(
         (successMessage: any) => {
-          console.log(successMessage); // Success callback
           showToastWithGravityAndOffset("Recording stoped Successfully")
+          Alert.alert("This audio Successfully")
         },
         (errorMessage: any) => {
           console.error(errorMessage); // Error callback
         },
       );
     }
+    // checkAudioFile();
     setServiceRunning(false);
   }
 
@@ -294,29 +344,10 @@ const UnblockRequestForm: React.FC<FormModalProps> = ({visible, onClose}) => {
   const [document, setDocument] = useState<string>('');
 
   const handleImagePick = async (type: 'photo' | 'document') => {
-    // const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    // if (permissionResult.granted === false) {
-    //   Alert.alert('Permission Required', 'Please allow access to your photo library to upload images.');
-    //   return;
-    // }
-    // const result = await ImagePicker.launchImageLibraryAsync({
-    //   mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    //   allowsEditing: true,
-    //   aspect: [4, 3],
-    //   quality: 1,
-    // });
-    // if (!result.canceled) {
-    //   if (type === 'photo') {
-    //     setPhoto(result.assets[0].uri);
-    //   } else {
-    //     setDocument(result.assets[0].uri);
-    //   }
-    // }
   };
 
   const handleSubmit = () => {
     // Here you would typically send the data to your backend
-    console.log('Form submitted:', {...formData, photo, document});
     Alert.alert(
       'Request Submitted',
       'Your unblock request has been submitted successfully. We will review it shortly.',
